@@ -1,0 +1,115 @@
+Anomaly Detection in Heart Disease Using a Density-Based Unsupervised Approach
+Description
+This repository provides the MATLAB implementation of a density-based unsupervised framework developed for anomaly detection in heart disease data. The proposed approach is motivated by the clinical importance of early identification of cardiovascular abnormalities and the limitations of traditional partition-based clustering techniques. The model integrates correlation-driven feature selection with an adaptive density-based clustering strategy to distinguish normal instances from anomalous cardiac cases. Unlike supervised classification paradigms, the method emphasizes structure discovery within the data space, allowing abnormal patterns to be detected without explicit reliance on predefined class boundaries. The implementation further includes comparative evaluation against multiple conventional classifiers to contextualize the performance of the proposed strategy.
+Code Authors
+Yahya Dorostkar Navaei
+Yaser Ahangari Nanehkaran
+DOI: 10.1155/2022/6913043
+Dataset Information
+The experiments utilize the UCI Heart Disease dataset, a widely studied benchmark collection containing clinical and physiological attributes associated with cardiac diagnosis. The dataset is curated from four independent sources:
+•	Cleveland
+•	Hungarian
+•	Switzerland
+•	VA Long Beach
+Within the MATLAB environment, these subsets are aggregated into a unified matrix to ensure sufficient diversity of patient records and feature distributions. Missing values and undefined entries are handled via constant imputation, replacing invalid markers and NaN values with zeros to maintain numerical consistency.
+Dataset Source
+UCI Machine Learning Repository – Heart Disease Dataset
+URL: https://archive.ics.uci.edu/ml/datasets/heart+Disease
+________________________________________
+Code Information
+The MATLAB script implements the complete anomaly detection pipeline, including:
+•	Dataset loading and consolidation
+•	Missing value handling
+•	Separation of normal and patient instances
+•	Variance-based filter feature selection
+•	Three-dimensional feature visualization
+•	Adaptive parameter estimation for DBSCAN clustering
+•	Density-based clustering and anomaly identification
+•	Quantitative performance evaluation
+•	Comparative analysis with baseline classifiers
+Custom functions required in the MATLAB path:
+•	DBSCAN
+•	PlotClusterinResult
+•	KNN
+•	SVM
+•	NN
+•	DT
+•	NB
+________________________________________
+Usage Instructions
+1.	Download the UCI Heart Disease dataset and convert it into MATLAB matrices named:
+cleveland, Hungarian, switzerland, VA
+along with their corresponding class vectors.
+2.	Place the dataset file (data.mat) in the MATLAB working directory.
+3.	Ensure all required helper functions are available in the MATLAB path.
+4.	Execute the main script:
+clear; clc; close all;
+load data
+5.	Run the script sequentially to reproduce clustering, visualization, and evaluation outputs.
+
+Requirements
+The implementation was developed and tested using:
+•	Software Environment: MATLAB R2021b
+•	Operating System: Windows 10 (64-bit)
+Required MATLAB toolboxes:
+•	Statistics and Machine Learning Toolbox – for distance computations, statistical operations, and classifier comparisons.
+•	MATLAB Base Functions – for matrix manipulation, plotting, and numerical processing.
+The DBSCAN function is implemented as a user-defined routine and does not require additional proprietary libraries beyond standard MATLAB functionality.
+
+Methodology
+The anomaly detection framework follows a structured sequence of processing stages:
+1. Data Preparation
+Clinical observations from multiple repositories are merged into a single dataset. Invalid entries and missing values are normalized through constant substitution to preserve computational stability.
+2. Feature Selection
+A filter-based strategy ranks features using statistical dispersion characteristics. Attributes exhibiting higher variability are prioritized to enhance cluster separability and reduce dimensional redundancy.
+3. Density-Based Clustering
+The DBSCAN algorithm is employed to discover clusters based on local density structures. Unlike centroid-based approaches, DBSCAN avoids assumptions regarding cluster count or initialization, making it robust to noise and irregular cluster geometries.
+4. Adaptive Parameter Estimation
+The neighborhood radius (ε) and minimum neighbor count (MinPts) are determined dynamically using dataset-dependent heuristics. This adaptive mechanism mitigates sensitivity associated with fixed parameter selection.
+5. Anomaly Identification
+Samples not belonging to any dense region are labeled as anomalies. In the clinical interpretation, these instances correspond to potential heart disease cases.
+6. Comparative Classification
+To contextualize the proposed model’s performance, predictions are compared with several supervised classifiers, including KNN, SVM, Neural Networks, Decision Trees, and Naïve Bayes.
+
+Assessment Metrics
+Performance evaluation is conducted using metrics commonly adopted in medical decision-support systems:
+•	Accuracy – Quantifies overall prediction correctness.
+•	Recall (Sensitivity) – Measures the ability to identify anomalous (patient) instances.
+•	Precision – Evaluates reliability of anomaly predictions.
+•	F-measure – Balances precision and recall, particularly relevant under class imbalance.
+•	True Positive Rate / True Negative Rate – Provide complementary insight into diagnostic reliability.
+These metrics are selected to ensure clinically meaningful interpretation of model behavior, where both missed detections and false alarms carry significant implications.
+
+Materials & Methods – Computing Infrastructure
+All simulations were performed under the following configuration:
+•	Hardware: Laptop ASUS N56J – Intel Core i7 Processor, 8 GB RAM
+•	Operating System: Windows 10 (64-bit)
+•	Software: MATLAB R2021b
+No distributed or high-performance computing resources were required.
+
+Related Publication
+This implementation corresponds to the methodology presented in:
+Nanehkaran, Y., Zhu Licai, Chen, J., Jamel, A. A. M., Shengnan, Z., Navaei, Y. D., & Abdollahzadeh Aghbolagh, M. (2022).
+Citation
+Anomaly Detection in Heart Disease Using a Density‐Based Unsupervised Approach.
+Wireless Communications and Mobile Computing, 2022(1), 6913043.
+DOI: 10.1155/2022/6913043
+
+Summary of the Published Study
+The associated study introduces an adaptive density-based unsupervised framework for detecting anomalies in heart disease datasets. The proposed model combines filter-based feature selection with DBSCAN clustering, addressing inherent limitations of partition-based clustering methods, particularly sensitivity to noise and dependence on predefined cluster counts. A central contribution of the work lies in the adaptive estimation of DBSCAN parameters, enabling near-optimal clustering performance without manual tuning. Experimental analysis demonstrates that the density-driven strategy effectively distinguishes normal and abnormal instances, achieving approximately 95% prediction accuracy and outperforming several conventional classification techniques.
+
+Conclusions
+The density-based unsupervised paradigm provides a robust mechanism for anomaly detection in medical datasets characterized by noise, heterogeneity, and partially redundant features. Adaptive parameter selection enhances clustering stability and diagnostic reliability. The results support the viability of unsupervised learning as a complementary tool for clinical decision-support systems.
+
+Limitations
+Several limitations warrant consideration:
+•	Constant imputation may influence feature distributions
+•	Parameter heuristics remain dataset-dependent
+•	Clinical datasets may exhibit varying noise characteristics
+•	Unsupervised labeling does not replace expert diagnosis
+•	Generalization requires validation across broader populations
+Future work may explore advanced imputation strategies, automated parameter optimization, and hybrid semi-supervised extensions.
+
+License & Contributions
+This code is released for academic and research purposes. Redistribution or derivative use should include appropriate citation of the associated publication. Contributions and methodological refinements are welcomed within scholarly and non-commercial contexts.
+
