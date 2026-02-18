@@ -1,10 +1,13 @@
 Anomaly Detection in Heart Disease Using a Density-Based Unsupervised Approach
+
 Description
 This repository provides the MATLAB implementation of a density-based unsupervised framework developed for anomaly detection in heart disease data. The proposed approach is motivated by the clinical importance of early identification of cardiovascular abnormalities and the limitations of traditional partition-based clustering techniques. The model integrates correlation-driven feature selection with an adaptive density-based clustering strategy to distinguish normal instances from anomalous cardiac cases. Unlike supervised classification paradigms, the method emphasizes structure discovery within the data space, allowing abnormal patterns to be detected without explicit reliance on predefined class boundaries. The implementation further includes comparative evaluation against multiple conventional classifiers to contextualize the performance of the proposed strategy.
+DOI: 10.1155/2022/6913043
+
 Code Authors
 Yahya Dorostkar Navaei
 Yaser Ahangari Nanehkaran
-DOI: 10.1155/2022/6913043
+
 Dataset Information
 The experiments utilize the UCI Heart Disease dataset, a widely studied benchmark collection containing clinical and physiological attributes associated with cardiac diagnosis. The dataset is curated from four independent sources:
 •	Cleveland
@@ -12,10 +15,11 @@ The experiments utilize the UCI Heart Disease dataset, a widely studied benchmar
 •	Switzerland
 •	VA Long Beach
 Within the MATLAB environment, these subsets are aggregated into a unified matrix to ensure sufficient diversity of patient records and feature distributions. Missing values and undefined entries are handled via constant imputation, replacing invalid markers and NaN values with zeros to maintain numerical consistency.
+
 Dataset Source
 UCI Machine Learning Repository – Heart Disease Dataset
 URL: https://archive.ics.uci.edu/ml/datasets/heart+Disease
-________________________________________
+
 Code Information
 The MATLAB script implements the complete anomaly detection pipeline, including:
 •	Dataset loading and consolidation
@@ -35,7 +39,7 @@ Custom functions required in the MATLAB path:
 •	NN
 •	DT
 •	NB
-________________________________________
+
 Usage Instructions
 1.	Download the UCI Heart Disease dataset and convert it into MATLAB matrices named:
 cleveland, Hungarian, switzerland, VA
