@@ -1,4 +1,4 @@
-function Yp=NB(train,train_lab,test)
-model = fitctree(train, train_lab);
-Yp=predict(model,test);
+function [Yp,scores]=NB(train,train_lab,test)
+model = fitcnb(train, train_lab,'DistributionNames','kernel');
+[Yp,scores]=predict(model,test);
 end

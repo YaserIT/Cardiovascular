@@ -3,8 +3,6 @@ clc
 close all
 load total
 %%
-% ND=1000;
-% K=randperm(length(D),ND);
 X=D;
 Y=C;
 %% ABC based Feature selection
@@ -142,54 +140,69 @@ PSOTEST=TEST(:,PSO.sf);
 GWOTrain=GWO.ff;
 GWOTEST=TEST(:,GWO.sf);
 %% ABCKNN
-ABCKNN=KNN(ABCTrain,Y,ABCTEST);
+[ABCKNN,ABCKNNscore]=KNN(ABCTrain,Y,ABCTEST);
 [ABCKNNACC,ABCKNNRecall,ABCKNNPrecision,ABCKNNFmeasure]=EvaluateCLF(ABCKNN,TClass);
+[ABCKNNX1,ABCKNNY1,ABCKNNT1,ABCKNNAUC1] = perfcurve(TClass', (ABCKNNscore(:,2))', 1);
 %% ABCNN
-ABCNN=NN(ABCTrain,Y,ABCTEST);
+[ABCNN,ABCNNscore]=NN(ABCTrain,Y,ABCTEST);
 [ABCNNACC,ABCNNRecall,ABCNNPrecision,ABCNNFmeasure]=EvaluateCLF(ABCNN,TClass);
+[ABCNNX1,ABCNNY1,ABCNNT1,ABCNNAUC1] = perfcurve(TClass', (ABCNNscore(:,2))', 1);
 %% ABCSVM
-ABCSVM=SVM(ABCTrain,Y,ABCTEST);
-[ABCSVMACC,ABCSVMRecall,ABCSVMPrecision,ABCSVMFmeasure]=EvaluateCLF(ABCSVM,TClass);
+[ABCSVM,ABCSVMscore]=SVM(ABCTrain,Y,ABCTEST);
+[ABCKNNACC,ABCKNNRecall,ABCKNNPrecision,ABCKNNFmeasure]=EvaluateCLF(ABCKNN,TClass);
+[ABCSVMX1,ABCSVMY1,ABCSVMT1,ABCSVMAUC1] = perfcurve(TClass', (ABCSVMscore(:,2))', 1);
 %% ABCNB
-ABCNB=NB(ABCTrain,Y,ABCTEST);
-[ABCNBACC,ABCNBRecall,ABCNBPrecision,ABCNBFmeasure]=EvaluateCLF(ABCNB,TClass);
+[ABCNB,ABCNBscore]=NB(ABCTrain,Y,ABCTEST);
+[ABCKNNACC,ABCKNNRecall,ABCKNNPrecision,ABCKNNFmeasure]=EvaluateCLF(ABCKNN,TClass);
+[ABCNBX1,ABCNBY1,ABCNBT1,ABCNBAUC1] = perfcurve(TClass', (ABCNBscore(:,2))', 1);
 %% GWOKNN
-GWOKNN=KNN(GWOTrain,Y,GWOTEST);
+[GWOKNN,GWOKNNscore]=KNN(GWOTrain,Y,GWOTEST);
 [GWOKNNACC,GWOKNNRecall,GWOKNNPrecision,GWOKNNFmeasure]=EvaluateCLF(GWOKNN,TClass);
+[GWOKNNX1,GWOKNNY1,GWOKNNT1,GWOKNNAUC1] = perfcurve(TClass', (GWOKNNscore(:,2))', 1);
 %% GWONN
-GWONN=NN(GWOTrain,Y,GWOTEST);
+[GWONN,GWONNscore]=NN(GWOTrain,Y,GWOTEST);
 [GWONNACC,GWONNRecall,GWONNPrecision,GWONNFmeasure]=EvaluateCLF(GWONN,TClass);
+[GWONNX1,GWONNY1,GWONNT1,GWONNAUC1] = perfcurve(TClass', (GWONNscore(:,2))', 1);
 %% GWOSVM
-GWOSVM=SVM(GWOTrain,Y,GWOTEST);
-[GWOSVMACC,GWOSVMRecall,GWOSVMPrecision,GWOSVMFmeasure]=EvaluateCLF(GWOSVM,TClass);
+[GWOSVM,GWOSVMscore]=SVM(GWOTrain,Y,GWOTEST);
+[GWOKNNACC,GWOKNNRecall,GWOKNNPrecision,GWOKNNFmeasure]=EvaluateCLF(GWOKNN,TClass);
+[GWOSVMX1,GWOSVMY1,GWOSVMT1,GWOSVMAUC1] = perfcurve(TClass', (GWOSVMscore(:,2))', 1);
 %% GWONB
-GWONB=NB(GWOTrain,Y,GWOTEST);
-[GWONBACC,GWONBRecall,GWONBPrecision,GWONBFmeasure]=EvaluateCLF(GWONB,TClass);
+[GWONB,GWONBscore]=NB(GWOTrain,Y,GWOTEST);
+[GWOKNNACC,GWOKNNRecall,GWOKNNPrecision,GWOKNNFmeasure]=EvaluateCLF(GWOKNN,TClass);
+[GWONBX1,GWONBY1,GWONBT1,GWONBAUC1] = perfcurve(TClass', (GWONBscore(:,2))', 1);
 %% GAKNN
-GAKNN=KNN(GATrain,Y,GATEST);
+[GAKNN,GAKNNscore]=KNN(GATrain,Y,GATEST);
 [GAKNNACC,GAKNNRecall,GAKNNPrecision,GAKNNFmeasure]=EvaluateCLF(GAKNN,TClass);
+[GAKNNX1,GAKNNY1,GAKNNT1,GAKNNAUC1] = perfcurve(TClass', (GAKNNscore(:,2))', 1);
 %% GANN
-GANN=NN(GATrain,Y,GATEST);
+[GANN,GANNscore]=NN(GATrain,Y,GATEST);
 [GANNACC,GANNRecall,GANNPrecision,GANNFmeasure]=EvaluateCLF(GANN,TClass);
+[GANNX1,GANNY1,GANNT1,GANNAUC1] = perfcurve(TClass', (GANNscore(:,2))', 1);
 %% GASVM
-GASVM=SVM(GATrain,Y,GATEST);
-[GASVMACC,GASVMRecall,GASVMPrecision,GASVMFmeasure]=EvaluateCLF(GASVM,TClass);
+[GASVM,GASVMscore]=SVM(GATrain,Y,GATEST);
+[GAKNNACC,GAKNNRecall,GAKNNPrecision,GAKNNFmeasure]=EvaluateCLF(GAKNN,TClass);
+[GASVMX1,GASVMY1,GASVMT1,GASVMAUC1] = perfcurve(TClass', (GASVMscore(:,2))', 1);
 %% GANB
-GANB=NB(GATrain,Y,GATEST);
-[GANBACC,GANBRecall,GANBPrecision,GANBFmeasure]=EvaluateCLF(GANB,TClass);
+[GANB,GANBscore]=NB(GATrain,Y,GATEST);
+[GAKNNACC,GAKNNRecall,GAKNNPrecision,GAKNNFmeasure]=EvaluateCLF(GAKNN,TClass);
+[GANBX1,GANBY1,GANBT1,GANBAUC1] = perfcurve(TClass', (GANBscore(:,2))', 1);
 %% PSOKNN
-PSOKNN=KNN(PSOTrain,Y,PSOTEST);
+[PSOKNN,PSOKNNscore]=KNN(PSOTrain,Y,PSOTEST);
 [PSOKNNACC,PSOKNNRecall,PSOKNNPrecision,PSOKNNFmeasure]=EvaluateCLF(PSOKNN,TClass);
+[PSOKNNX1,PSOKNNY1,PSOKNNT1,PSOKNNAUC1] = perfcurve(TClass', (PSOKNNscore(:,2))', 1);
 %% PSONN
-PSONN=NN(PSOTrain,Y,PSOTEST);
+[PSONN,PSONNscore]=NN(PSOTrain,Y,PSOTEST);
 [PSONNACC,PSONNRecall,PSONNPrecision,PSONNFmeasure]=EvaluateCLF(PSONN,TClass);
+[PSONNX1,PSONNY1,PSONNT1,PSONNAUC1] = perfcurve(TClass', (PSONNscore(:,2))', 1);
 %% PSOSVM
-PSOSVM=SVM(PSOTrain,Y,PSOTEST);
-[PSOSVMACC,PSOSVMRecall,PSOSVMPrecision,PSOSVMFmeasure]=EvaluateCLF(PSOSVM,TClass);
+[PSOSVM,PSOSVMscore]=SVM(PSOTrain,Y,PSOTEST);
+[PSOKNNACC,PSOKNNRecall,PSOKNNPrecision,PSOKNNFmeasure]=EvaluateCLF(PSOKNN,TClass);
+[PSOSVMX1,PSOSVMY1,PSOSVMT1,PSOSVMAUC1] = perfcurve(TClass', (PSOSVMscore(:,2))', 1);
 %% PSONB
-PSONB=NB(PSOTrain,Y,PSOTEST);
-[PSONBACC,PSONBRecall,PSONBPrecision,PSONBFmeasure]=EvaluateCLF(PSONB,TClass);
-
+[PSONB,PSONBscore]=NB(PSOTrain,Y,PSOTEST);
+[PSOKNNACC,PSOKNNRecall,PSOKNNPrecision,PSOKNNFmeasure]=EvaluateCLF(PSOKNN,TClass);
+[PSONBX1,PSONBY1,PSONBT1,PSONBAUC1] = perfcurve(TClass', (PSONBscore(:,2))', 1);
 %% Test Evaluating
 ST=length(GWOKNNACC)/10;
 e=1:ST:length(GWOKNNACC);
@@ -661,7 +674,166 @@ xlabel('test(*500)')
 ylabel('Fmeasure rate')
 axis tight
 grid on
+%% ROC-AUC
+figure;
+plot(ABCKNNX1, ABCKNNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for ABC-KNN');
+legend(['ABC-KNN (AUC = ' num2str(ABCKNNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
 
+figure;
+plot(ABCNNX1, ABCNNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for ABC-NN');
+legend(['ABC-NN (AUC = ' num2str(ABCNNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(ABCSVMX1, ABCSVMY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for ABC-SVM');
+legend(['ABC-SVM (AUC = ' num2str(ABCSVMAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(ABCNBX1, ABCNBY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for ABC-NB');
+legend(['ABC-NB (AUC = ' num2str(ABCNBAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+%%
+figure;
+plot(GWOKNNX1, GWOKNNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GWO-KNN');
+legend(['GWO-KNN (AUC = ' num2str(GWOKNNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(GWONNX1, GWONNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GWO-NN');
+legend(['GWO-NN (AUC = ' num2str(GWONNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(GWOSVMX1, GWOSVMY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GWO-SVM');
+legend(['GWO-SVM (AUC = ' num2str(GWOSVMAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(GWONBX1, GWONBY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GWO-NB');
+legend(['GWO-NB (AUC = ' num2str(GWONBAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+%%
+figure;
+plot(GAKNNX1, GAKNNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GA-KNN');
+legend(['GA-KNN (AUC = ' num2str(GAKNNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(GANNX1, GANNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GA-NN');
+legend(['GA-NN (AUC = ' num2str(GANNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(GASVMX1, GASVMY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GA-SVM');
+legend(['GA-SVM (AUC = ' num2str(GASVMAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(GANBX1, GANBY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for GA-NB');
+legend(['GA-NB (AUC = ' num2str(GANBAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+%%
+figure;
+plot(PSOKNNX1, PSOKNNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for PSO-KNN');
+legend(['PSO-KNN (AUC = ' num2str(PSOKNNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(PSONNX1, PSONNY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for PSO-NN');
+legend(['PSO-NN (AUC = ' num2str(PSONNAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(PSOSVMX1, PSOSVMY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for PSO-SVM');
+legend(['PSO-SVM (AUC = ' num2str(PSOSVMAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
+
+figure;
+plot(PSONBX1, PSONBY1, 'LineWidth', 2, 'Color', [0.1 0.3 0.8]);
+hold on;
+grid on;
+xlabel('False Positive Rate');
+ylabel('True Positive Rate');
+title('ROC Curve for PSO-NB');
+legend(['PSO-NB (AUC = ' num2str(PSONBAUC1,'%.4f') ')'], 'Location', 'northwest',Orientation='vertical');
+hold off;
 %%
 KNNABC_Accuracy = mean(ABCKNNACC)
 KNNABC_Recall = mean(ABCKNNRecall)
@@ -788,6 +960,7 @@ NBPSO_Precision = mean(PSONBPrecision)
 NBPSO_Fmeasure = mean(PSONBFmeasure)
 NBPSO_MSE = mean((TClass - PSONB).^2)
 [~,~,~,NBPSO_AUC] = perfcurve(TClass, PSONB, 1)
+
 %%
-save('ResultNew2.mat')
+% save('Result.mat')
 %% END
