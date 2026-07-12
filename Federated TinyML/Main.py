@@ -1,240 +1,483 @@
-# ======================================================
-# 0. Imports
-# ======================================================
+import os
+import time
+import warnings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import time
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Input, Dropout
-from tensorflow.keras.optimizers import Adam
-from sklearn.preprocessing import StandardScaler
+import openpyxl
+from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    f1_score, roc_auc_score
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    roc_curve,
 )
 from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, KFold
+from xgboost import XGBClassifier
 
-np.random.seed(42)
-tf.random.set_seed(42)
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Input
+from tensorflow.keras.optimizers import Adam
 
-# ======================================================
-# 1. Parameters
-# ======================================================
-K = 20                  # 🔹 Number of full experiment runs
-NUM_POINTS = 20
-ratios = np.linspace(0.05, 1.0, NUM_POINTS)
-metrics = ["accuracy", "precision", "recall", "f1", "auc", "latency"]
+warnings.filterwarnings("ignore")
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-# ======================================================
-# 2. Load & preprocess dataset
-# ======================================================
-data = pd.read_csv("heart.csv")
-data = data.select_dtypes(include=[np.number])
-X = data.drop("target", axis=1).values
-y = data["target"].values.ravel()
+# =========================
+# Global config
+# =========================
+SEED = 42
+K_FOLDS = 10
+TARGET_COL = "target"
+INPUT_FILE = "heart.csv"
+OUTPUT_DIR = "heart"
 
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=42, stratify=y
-)
+plt.style.use("seaborn-v0_8-whitegrid")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ======================================================
-# 3. MLP Model Builder
-# ======================================================
-def build_mlp(input_dim):
+METRICS = ["accuracy", "precision", "recall", "f1", "auc", "latency"]
+
+
+# =========================
+# Utility functions
+# =========================
+def save_plot(filename):
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, filename), dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def safe_precision(y_true, y_pred):
+    return precision_score(y_true, y_pred, zero_division=0)
+
+
+def safe_recall(y_true, y_pred):
+    return recall_score(y_true, y_pred, zero_division=0)
+
+
+def safe_f1(y_true, y_pred):
+    return f1_score(y_true, y_pred, zero_division=0)
+
+
+def compute_metrics(y_true, y_score, latency):
+    y_pred = (y_score >= 0.5).astype(int)
+    return {
+        "accuracy": accuracy_score(y_true, y_pred),
+        "precision": safe_precision(y_true, y_pred),
+        "recall": safe_recall(y_true, y_pred),
+        "f1": safe_f1(y_true, y_pred),
+        "auc": roc_auc_score(y_true, y_score),
+        "latency": latency,
+    }
+
+
+# =========================
+# Model builders
+# =========================
+def build_mlp(input_dim, seed=SEED):
+    tf.keras.utils.set_random_seed(seed)
+
     model = Sequential([
         Input(shape=(input_dim,)),
         Dense(32, activation="relu"),
-        Dropout(0.3),
+        Dropout(0.30),
         Dense(16, activation="relu"),
-        Dropout(0.2),
+        Dropout(0.20),
         Dense(1, activation="sigmoid")
     ])
-    model.compile(optimizer=Adam(0.001), loss="binary_crossentropy")
+
+    model.compile(
+        optimizer=Adam(learning_rate=0.001),
+        loss="binary_crossentropy"
+    )
     return model
 
-# ======================================================
-# 4. Model Functions
-# ======================================================
-def mlp_predict(X_train, y_train, X_test):
-    model = build_mlp(X_train.shape[1])
-    model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
-    return model.predict(X_test).ravel()
 
-def mlp_bagging_predict(X_train, y_train, X_test, n_models=3):
+def model_mlp_predict(X_train, y_train, X_test):
+    model = build_mlp(X_train.shape[1], seed=SEED)
+    model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
+    y_score = model.predict(X_test, verbose=0).ravel()
+    return y_score
+
+
+def model_bagging_predict(X_train, y_train, X_test, n_models=3):
     preds = []
-    for seed in range(n_models):
-        tf.random.set_seed(seed)
-        model = build_mlp(X_train.shape[1])
+    for i in range(n_models):
+        model = build_mlp(X_train.shape[1], seed=SEED + i)
         model.fit(X_train, y_train, epochs=15, batch_size=32, verbose=0)
-        preds.append(model.predict(X_test).ravel())
+        preds.append(model.predict(X_test, verbose=0).ravel())
     return np.mean(preds, axis=0)
 
-def mlp_rf_soft_voting(X_train, y_train, X_test):
-    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+
+def model_rf_predict(X_train, y_train, X_test):
+    rf = RandomForestClassifier(
+        n_estimators=200,
+        random_state=SEED,
+        n_jobs=-1
+    )
     rf.fit(X_train, y_train)
     rf_score = rf.predict_proba(X_test)[:, 1]
-    mlp_score = mlp_bagging_predict(X_train, y_train, X_test, n_models=3)
+
+    mlp_score = model_bagging_predict(X_train, y_train, X_test, n_models=3)
     return 0.5 * rf_score + 0.5 * mlp_score
 
-def mlp_xgb(X_train, y_train, X_test):
-    xgb = XGBClassifier(n_estimators=100, max_depth=4, learning_rate=0.1,eval_metric="logloss", scale_pos_weight=5)
+
+def model_xgb_predict(X_train, y_train, X_test):
+    xgb = XGBClassifier(
+        n_estimators=200,
+        max_depth=4,
+        learning_rate=0.05,
+        subsample=0.9,
+        colsample_bytree=0.9,
+        eval_metric="logloss",
+        random_state=SEED
+    )
     xgb.fit(X_train, y_train)
     xgb_score = xgb.predict_proba(X_test)[:, 1]
-    mlp_score = mlp_bagging_predict(X_train, y_train, X_test, n_models=3)
-    return 0.5 *  xgb_score + 0.5 *  mlp_score
 
-def stacking_ensemble(X_train, y_train, X_test, n_folds=3):
-    kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
-    oof_rf = np.zeros(len(X_train))
-    oof_mlp = np.zeros(len(X_train))
+    mlp_score = model_bagging_predict(X_train, y_train, X_test, n_models=3)
+    return 0.5 * xgb_score + 0.5 * mlp_score
 
-    for train_idx, val_idx in kf.split(X_train):
-        X_tr, X_val = X_train[train_idx], X_train[val_idx]
-        y_tr = y_train[train_idx]
 
-        rf = RandomForestClassifier(n_estimators=100, random_state=42)
-        rf.fit(X_tr, y_tr)
-        oof_rf[val_idx] = rf.predict_proba(X_val)[:, 1]
+def model_stacking_predict(X_train, y_train, X_test):
+    """
+    Simple stacking:
+        base models: RF + MLP
+        meta model : LogisticRegression(C=0.5)
+    Note:
+        This is a simple implementation, not full OOF stacking.
+    """
 
-        mlp = build_mlp(X_tr.shape[1])
-        mlp.fit(X_tr, y_tr, epochs=15, batch_size=32, verbose=0)
-        oof_mlp[val_idx] = mlp.predict(X_val).ravel()
+    rf = RandomForestClassifier(
+        n_estimators=200,
+        random_state=SEED,
+        n_jobs=-1
+    )
+    rf.fit(X_train, y_train)
+    rf_train = rf.predict_proba(X_train)[:, 1]
+    rf_test = rf.predict_proba(X_test)[:, 1]
 
-    meta = LogisticRegression()
-    meta.fit(np.vstack([oof_rf, oof_mlp]).T, y_train)
+    mlp = build_mlp(X_train.shape[1], seed=SEED)
+    mlp.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
+    mlp_train = mlp.predict(X_train, verbose=0).ravel()
+    mlp_test = mlp.predict(X_test, verbose=0).ravel()
 
-    rf_test = RandomForestClassifier(
-        n_estimators=100, random_state=42
-    ).fit(X_train, y_train).predict_proba(X_test)[:, 1]
+    meta_X_train = np.column_stack([rf_train, mlp_train])
+    meta_X_test = np.column_stack([rf_test, mlp_test])
 
-    mlp_test = build_mlp(X_train.shape[1])
-    mlp_test.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
-    mlp_test = mlp_test.predict(X_test).ravel()
+    meta = LogisticRegression(C=0.5, max_iter=1000, random_state=SEED)
+    meta.fit(meta_X_train, y_train)
 
-    return meta.predict_proba(np.vstack([rf_test, mlp_test]).T)[:, 1]
+    return meta.predict_proba(meta_X_test)[:, 1]
 
-# ======================================================
-# 5. Models dictionary
-# ======================================================
-models = {
-    "MLP": mlp_predict,
-    "Bagging": lambda Xtr, ytr, Xte: mlp_bagging_predict(Xtr, ytr, Xte, 3),
-    "RF_Voting": mlp_rf_soft_voting,
-    "XGBoost": mlp_xgb,
-    "Stacking": stacking_ensemble
+
+MODELS = {
+    "MLP": model_mlp_predict,
+    "Bagging": model_bagging_predict,
+    "RF": model_rf_predict,
+    "XGBoost": model_xgb_predict,
+    "Stacking": model_stacking_predict,
 }
 
-# ======================================================
-# 6. K-run Evaluation
-# ======================================================
-results_k = {
-    model: {m: [] for m in metrics}
-    for model in models
-}
 
-for k in range(K):
-    print(f"Run {k+1}/{K}")
-    centralized = {m: {met: [] for met in metrics} for m in models}
+# =========================
+# Plotting functions
+# =========================
+def plot_internal_mean_roc(roc_storage, cv_results):
+    mean_fpr = np.linspace(0, 1, 200)
 
-    for name, func in models.items():
-        start = time.time()
-        y_score_all = func(X_train, y_train, X_test)
-        latency = time.time() - start
-        y_pred_all = (y_score_all > 0.5).astype(int)
+    plt.figure(figsize=(8, 6))
 
-        for r in ratios:
-            n = int(len(X_test) * r)
-            if n < 10:
-                continue
+    for model_name in MODELS.keys():
+        tprs = np.array(roc_storage[model_name])
+        mean_tpr = np.mean(tprs, axis=0)
+        std_tpr = np.std(tprs, axis=0)
+        mean_auc = np.mean(cv_results[model_name]["auc"])
 
-            y_t = y_test[:n]
-            y_p = y_pred_all[:n]
-            y_s = y_score_all[:n]
+        lower = np.maximum(mean_tpr - std_tpr, 0)
+        upper = np.minimum(mean_tpr + std_tpr, 1)
 
-            centralized[name]["accuracy"].append(accuracy_score(y_t, y_p))
-            centralized[name]["precision"].append(
-                precision_score(y_t, y_p, zero_division=0))
-            centralized[name]["recall"].append(
-                recall_score(y_t, y_p, zero_division=0))
-            centralized[name]["f1"].append(
-                f1_score(y_t, y_p, zero_division=0))
-            centralized[name]["auc"].append(
-                roc_auc_score(y_t, y_s) if len(np.unique(y_t)) > 1 else 0)
-            centralized[name]["latency"].append(latency)
+        plt.plot(mean_fpr, mean_tpr, linewidth=2,
+                 label=f"{model_name} (AUC={mean_auc:.3f})")
+        plt.fill_between(mean_fpr, lower, upper, alpha=0.15)
 
-    for name in models:
-        for m in metrics:
-            results_k[name][m].append(np.mean(centralized[name][m]))
+    plt.plot([0, 1], [0, 1], "k--", linewidth=1)
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("Mean ROC Curve with Confidence Band (Internal Validation)")
+    plt.legend()
+    save_plot("internal_mean_roc.png")
 
-# ======================================================
-# 7. Line Plot + Error Bar
-# ======================================================
-def plot_with_errorbar(results, metric):
-    plt.figure(figsize=(8,5))
-    for name in results:
-        values = np.array(results[name][metric])
-        values = np.sort(values)
-        mean = np.mean(values)
-        std = np.std(values)
 
-        plt.errorbar(
-            range(1, len(values)+1),
-            values,
-            yerr=std,
-            marker='o',
-            capsize=4,
-            label=name
+def plot_internal_line(cv_results):
+    for metric in METRICS:
+        plt.figure(figsize=(8, 5))
+        for model_name in MODELS.keys():
+            values = cv_results[model_name][metric]
+            plt.plot(
+                range(1, K_FOLDS + 1),
+                values,
+                marker="o",
+                linewidth=2,
+                label=model_name
+            )
+        plt.xlabel("Fold")
+        plt.ylabel(metric.upper())
+        plt.title(f"{metric.upper()} across folds (Internal Validation)")
+        plt.legend()
+        save_plot(f"internal_line_{metric}.png")
+
+
+def plot_internal_box(cv_results):
+    for metric in METRICS:
+        plt.figure(figsize=(8, 5))
+        data = [cv_results[m][metric] for m in MODELS.keys()]
+        plt.boxplot(data, labels=list(MODELS.keys()), showmeans=True)
+        plt.ylabel(metric.upper())
+        plt.title(f"{metric.upper()} distribution (Internal Validation)")
+        save_plot(f"internal_box_{metric}.png")
+
+
+def plot_external_roc(external_scores, y_external):
+    plt.figure(figsize=(8, 6))
+    for model_name in MODELS.keys():
+        y_score = external_scores[model_name]
+        fpr, tpr, _ = roc_curve(y_external, y_score)
+        auc_val = roc_auc_score(y_external, y_score)
+        plt.plot(fpr, tpr, linewidth=2, label=f"{model_name} (AUC={auc_val:.3f})")
+
+    plt.plot([0, 1], [0, 1], "k--", linewidth=1)
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve (External Validation)")
+    plt.legend()
+    save_plot("external_roc.png")
+
+
+def plot_external_bar(external_results):
+    for metric in METRICS:
+        plt.figure(figsize=(8, 5))
+        values = [external_results[m][metric] for m in MODELS.keys()]
+        plt.bar(list(MODELS.keys()), values)
+        plt.ylabel(metric.upper())
+        plt.title(f"{metric.upper()} Comparison (External Validation)")
+        plt.xticks(rotation=20)
+        save_plot(f"external_bar_{metric}.png")
+
+
+def plot_external_line(external_results):
+    for metric in METRICS:
+        plt.figure(figsize=(8, 5))
+        values = [external_results[m][metric] for m in MODELS.keys()]
+        plt.plot(list(MODELS.keys()), values, marker="o", linewidth=2)
+        plt.ylabel(metric.upper())
+        plt.title(f"{metric.upper()} Comparison (External Validation)")
+        plt.xticks(rotation=20)
+        save_plot(f"external_line_{metric}.png")
+
+
+# =========================
+# Main script
+# =========================
+def main():
+    print("Loading dataset...")
+
+    if not os.path.exists(INPUT_FILE):
+        raise FileNotFoundError(
+            f"Input file '{INPUT_FILE}' not found. "
+            f"Please place heart.csv in the same folder as this script."
         )
 
-    plt.xlabel("Iterations")
-    plt.ylabel(metric.upper())
-    plt.title(f"{metric.upper()} over {K} Runs in Federals(±STD)")
-    plt.grid(True)
+    data = pd.read_csv(INPUT_FILE)
 
-    plt.legend(
-        loc='center left',
-        bbox_to_anchor=(1.02, 0.5)
+    data.columns = data.columns.str.strip()
+    # data = data.drop(columns=["Patient ID"])
+
+    if TARGET_COL not in data.columns:
+        raise ValueError(
+            f"Target column '{TARGET_COL}' was not found. "
+            f"Available columns: {data.columns.tolist()}"
+        )
+
+    data[TARGET_COL] = data[TARGET_COL].astype(str).str.lower().str.strip()
+    # mapping = {
+    #     # "yes": 1,
+    #     # "no": 0,
+    #     "positive": 1,
+    #     "negative": 0
+    # }
+    #
+    # data[TARGET_COL] = data[TARGET_COL].map(mapping)
+
+    if data[TARGET_COL].isna().any():
+        raise ValueError(
+            "Target column contains unexpected values. "
+            "Expected 'positive' or 'negative'."
+        )
+
+    data[TARGET_COL] = data[TARGET_COL].astype(int)
+
+    feature_cols = [c for c in data.columns if c != TARGET_COL]
+
+    for col in feature_cols:
+        if pd.api.types.is_numeric_dtype(data[col]):
+            data[col] = pd.to_numeric(data[col],errors="coerce")
+        else:
+            le = LabelEncoder()
+            data[col] = le.fit_transform(data[col].astype(str))
+
+    data = data.dropna()
+
+    X = data.drop(columns=[TARGET_COL]).values
+    y = data[TARGET_COL].values
+
+    print("Target distribution:")
+    print(pd.Series(y).value_counts().sort_index())
+
+    print(f"Dataset shape: {data.shape}")
+    print(f"Features shape: {X.shape}")
+
+    # External hold-out split
+    X_train_full, X_external, y_train_full, y_external = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        stratify=y,
+        random_state=SEED
     )
 
-    plt.tight_layout(rect=[0, 0, 0.99, 1])
-    plt.show()
+    print("\nData split completed.")
+    print(f"Training+CV set: {X_train_full.shape}")
+    print(f"External hold-out set: {X_external.shape}")
 
-# ======================================================
-# 8. Boxplot
-# ======================================================
-def plot_boxplot(results, metric):
-    plt.figure(figsize=(7,5))
-    plt.boxplot(
-        [results[name][metric] for name in results],
-        labels=results.keys(),
-        showmeans=True
+    # Storage
+    cv_results = {
+        model_name: {metric: [] for metric in METRICS}
+        for model_name in MODELS.keys()
+    }
+
+    mean_fpr = np.linspace(0, 1, 200)
+    roc_storage = {model_name: [] for model_name in MODELS.keys()}
+
+    skf = StratifiedKFold(
+        n_splits=K_FOLDS,
+        shuffle=True,
+        random_state=SEED
     )
-    plt.ylabel(metric.upper())
-    plt.title(f"Boxplot of Mean {metric.upper()} over {K} Runs in Federals")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
 
-# ======================================================
-# 9. Plot All Metrics
-# ======================================================
-for m in metrics:
-    plot_with_errorbar(results_k, m)
-    plot_boxplot(results_k, m)
+    print("\nStarting internal cross-validation...")
 
-# ======================================================
-# 10. Final Results
-# ======================================================
-print("\n=== Final Mean Metrics over K Runs ===")
-for name in results_k:
-    print(f"\n{name}")
-    for m in metrics:
-        print(f"{m}: {np.mean(results_k[name][m]):.4f}")
+    for fold_idx, (train_idx, test_idx) in enumerate(skf.split(X_train_full, y_train_full), start=1):
+        print(f"  Fold {fold_idx}/{K_FOLDS}")
+
+        X_tr = X_train_full[train_idx]
+        X_te = X_train_full[test_idx]
+        y_tr = y_train_full[train_idx]
+        y_te = y_train_full[test_idx]
+
+        # Safe scaling inside CV loop
+        scaler = StandardScaler()
+        X_tr_scaled = scaler.fit_transform(X_tr)
+        X_te_scaled = scaler.transform(X_te)
+
+        for model_name, model_func in MODELS.items():
+            start_time = time.time()
+            y_score = model_func(X_tr_scaled, y_tr, X_te_scaled)
+            latency = time.time() - start_time
+
+            fold_metrics = compute_metrics(y_te, y_score, latency)
+            for metric in METRICS:
+                cv_results[model_name][metric].append(fold_metrics[metric])
+
+            fpr, tpr, _ = roc_curve(y_te, y_score)
+            interp_tpr = np.interp(mean_fpr, fpr, tpr)
+            interp_tpr[0] = 0.0
+            interp_tpr[-1] = 1.0
+            roc_storage[model_name].append(interp_tpr)
+
+    print("Internal CV completed.")
+    # --- SORT RESULTS FOR CLEANER LINE PLOTS ---
+    for model_name in MODELS.keys():
+        for metric in METRICS:
+            cv_results[model_name][metric] = sorted(
+                cv_results[model_name][metric]
+            )
+    # Save internal results as CSV
+    rows = []
+    for model_name in MODELS.keys():
+        for fold in range(K_FOLDS):
+            row = {"model": model_name, "fold": fold + 1}
+            for metric in METRICS:
+                row[metric] = cv_results[model_name][metric][fold]
+            rows.append(row)
+
+    internal_df = pd.DataFrame(rows)
+    internal_df.to_csv(os.path.join(OUTPUT_DIR, "internal_cv_metrics.csv"), index=False)
+
+    # Internal plots
+    print("Saving internal validation plots...")
+    plot_internal_mean_roc(roc_storage, cv_results)
+    plot_internal_line(cv_results)
+    plot_internal_box(cv_results)
+
+    # External evaluation
+    print("\nStarting external validation...")
+
+    scaler_full = StandardScaler()
+    X_train_full_scaled = scaler_full.fit_transform(X_train_full)
+    X_external_scaled = scaler_full.transform(X_external)
+
+    external_results = {model_name: {} for model_name in MODELS.keys()}
+    external_scores = {}
+
+    for model_name, model_func in MODELS.items():
+        print(f"  Evaluating external set: {model_name}")
+        start_time = time.time()
+        y_score = model_func(X_train_full_scaled, y_train_full, X_external_scaled)
+        latency = time.time() - start_time
+
+        external_scores[model_name] = y_score
+        metric_values = compute_metrics(y_external, y_score, latency)
+
+        for metric in METRICS:
+            external_results[model_name][metric] = metric_values[metric]
+
+    external_df = pd.DataFrame(external_results).T.reset_index()
+    external_df = external_df.rename(columns={"index": "model"})
+    external_df.to_csv(os.path.join(OUTPUT_DIR, "external_metrics.csv"), index=False)
+
+    print("Saving external validation plots...")
+    plot_external_roc(external_scores, y_external)
+    plot_external_bar(external_results)
+    plot_external_line(external_results)
+
+    # Print summary
+    print("\n==============================")
+    print("Internal CV mean results")
+    print("==============================")
+    for model_name in MODELS.keys():
+        print(f"\n{model_name}")
+        for metric in METRICS:
+            vals = cv_results[model_name][metric]
+            print(f"  {metric:10s}: {np.mean(vals):.4f} ± {np.std(vals):.4f}")
+
+    print("\n==============================")
+    print("External hold-out results")
+    print("==============================")
+    for model_name in MODELS.keys():
+        print(f"\n{model_name}")
+        for metric in METRICS:
+            print(f"  {metric:10s}: {external_results[model_name][metric]:.4f}")
+
+    print(f"\nAll outputs saved in: {OUTPUT_DIR}/")
+
+
+if __name__ == "__main__":
+    main()
